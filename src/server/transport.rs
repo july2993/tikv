@@ -84,6 +84,7 @@ pub trait RaftStoreRouter: Send + Clone {
 #[derive(Clone)]
 pub struct ServerRaftStoreRouter {
     pub ch: SendCh<StoreMsg>,
+    // see store.rs poll_significant_msg()
     pub significant_msg_sender: Sender<SignificantMsg>,
 }
 
@@ -99,6 +100,8 @@ impl ServerRaftStoreRouter {
     }
 }
 
+// 路由到本store 处理
+// raftstore/store/store.rs  on_raft_message 处理
 impl RaftStoreRouter for ServerRaftStoreRouter {
     fn try_send(&self, msg: StoreMsg) -> RaftStoreResult<()> {
         self.ch.try_send(msg)?;

@@ -40,6 +40,7 @@ const GENERATE_POOL_SIZE: usize = 2;
 
 /// region related task.
 pub enum Task {
+    // 会落地一个snapshot
     Gen {
         region_id: u64,
         notifier: SyncSender<RaftSnapshot>,
@@ -100,8 +101,10 @@ struct SnapContext {
 impl SnapContext {
     fn generate_snap(&self, region_id: u64, notifier: SyncSender<RaftSnapshot>) -> Result<()> {
         // do we need to check leader here?
+        // no every raw node can compact itself
         let raft_db = Arc::clone(&self.raft_db);
         let raw_snap = Snapshot::new(Arc::clone(&self.kv_db));
+        // why not use self.kv_db.snapshot()
 
         let snap = box_try!(store::do_snapshot(
             self.mgr.clone(),

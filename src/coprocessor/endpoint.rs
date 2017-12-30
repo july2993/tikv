@@ -193,6 +193,9 @@ impl Host {
     }
 }
 
+// 请求入口都是Request,
+// 会group批量获取 snapshot后再通过BatchSnapRes 处理，回去不到的会通过RetryRequests
+// 重试一次
 pub enum Task {
     Request(RequestTask),
     SnapRes(u64, engine::Result<Box<Snapshot>>),

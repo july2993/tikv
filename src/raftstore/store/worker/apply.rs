@@ -1511,6 +1511,7 @@ impl Runner {
 
         // Write to engine
         // raftsotre.sync-log = true means we need prevent data loss when power failure.
+        // ???
         // take raft log gc for example, we write kv WAL first, then write raft WAL,
         // if power failure happen, raft WAL may synced to disk, but kv WAL may not.
         // so we use sync-log flag here.

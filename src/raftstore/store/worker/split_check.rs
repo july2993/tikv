@@ -120,6 +120,7 @@ impl<'a> MergedIterator<'a> {
     }
 }
 
+// 检查是否需要split, 需要则发送Msg到raftstore 进行split
 /// Split checking task.
 pub struct Task {
     region: Region,

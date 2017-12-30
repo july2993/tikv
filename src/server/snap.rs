@@ -40,6 +40,8 @@ pub type Callback = Box<FnBox(Result<()>) + Send>;
 
 const DEFAULT_SENDER_POOL_SIZE: usize = 3;
 
+// server transport impl will schedule a tack to send snapshot msg(server/transport.rs)
+
 /// `Task` that `Runner` can handle.
 ///
 /// `Register` register a pending snapshot file with token;
@@ -48,6 +50,9 @@ const DEFAULT_SENDER_POOL_SIZE: usize = 3;
 /// `Discard` discard all the unsaved changes made to snapshot file;
 /// `SendTo` send the snapshot file to specified address.
 pub enum Task {
+    // see server/kv.rs snapshot
+    // 接收snapshot第一个item Register,然后write 最后Close
+    // 接收过程出错Discard
     Register(Token, RaftMessage),
     Write(Token, PipeBuffer),
     Close(Token),
@@ -106,6 +111,8 @@ impl Stream for SnapChunk {
     }
 }
 
+// 在mgr获取snapshot 数据同步发送完返回
+// 调用前snapshot应该已经生成好了
 /// Send the snapshot to specified address.
 ///
 /// It will first send the normal raft snapshot message and then send the snapshot file.
@@ -122,6 +129,7 @@ fn send_snap(
     let send_timer = SEND_SNAP_HISTOGRAM.start_coarse_timer();
 
     let key = {
+        // SnapKey::from_region_snap(msg.region_id, ....)?
         let snap = msg.get_message().get_snapshot();
         SnapKey::from_snap(snap)?
     };
@@ -245,6 +253,8 @@ impl<R: RaftStoreRouter + 'static> Runnable<Task> for Runner<R> {
                     }
                 }
             }
+            // 多个runner会不会有竞争，同一个snapshot 先处理了write 再处理Register
+            // -- runner 只会有一个
             Task::Write(token, mut data) => {
                 SNAP_TASK_COUNTER.with_label_values(&["write"]).inc();
                 match self.files.entry(token) {
@@ -282,6 +292,7 @@ impl<R: RaftStoreRouter + 'static> Runnable<Task> for Runner<R> {
                             );
                             return;
                         }
+                        // 接收成功才通知到raftstore->raft处理
                         if let Err(e) = self.raft_router.send_raft_msg(msg) {
                             error!("send snapshot for token {:?} err {:?}", token, e);
                         }

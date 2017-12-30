@@ -21,6 +21,7 @@ use std::fmt::{self, Display, Formatter};
 use std::error;
 use std::sync::mpsc::Sender;
 
+// 删除 对应[start_idx, end_idx)的raft log
 pub struct Task {
     pub raft_engine: Arc<DB>,
     pub region_id: u64,
@@ -72,6 +73,8 @@ impl Runner {
         end_idx: u64,
     ) -> Result<u64, Error> {
         let mut first_idx = start_idx;
+        // 重启的时候第一个task first_idx 会为0
+        // seek到第一个非空的log
         if first_idx == 0 {
             let start_key = keys::raft_log_key(region_id, 0);
             first_idx = end_idx;

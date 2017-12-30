@@ -144,7 +144,9 @@ pub struct Store<T, C: 'static> {
     pending_snapshot_regions: Vec<metapb::Region>,
     split_check_worker: Worker<SplitCheckTask>,
     region_worker: Worker<RegionTask>,
+    // 物理删除raft log
     raftlog_gc_worker: Worker<RaftlogGcTask>,
+    // 做rocksdb 的compact
     compact_worker: Worker<CompactTask>,
     pd_worker: FutureWorker<PdTask>,
     consistency_check_worker: Worker<ConsistencyCheckTask>,
@@ -784,6 +786,7 @@ impl<T: Transport, C: PdClient> Store<T, C> {
             return Ok(());
         }
 
+        // 返回None 是是接受snapshot pending_snapshot_regions push对应region
         if let Some(key) = self.check_snapshot(&msg)? {
             // If the snapshot file is not used again, then it's OK to
             // delete them here. If the snapshot file will be reused when
@@ -1347,6 +1350,11 @@ impl<T: Transport, C: PdClient> Store<T, C> {
         };
         peer.last_compacted_idx = task.end_idx;
         peer.mut_store().compact_to(task.end_idx);
+        // 失败是不是会留下空洞没gc
+        // 活着schedule了但还没执行这时候挂了活着重启
+        // 会不会这样
+        // 如果漏了个index 很小到如 10， truncated_index 现在到了 很大 n
+        // 下次重启raftgc 会从10..n一个个调用delete
         if let Err(e) = self.raftlog_gc_worker.schedule(task) {
             error!(
                 "[region {}] failed to schedule compact task: {}",
@@ -2100,6 +2108,7 @@ impl<T: Transport, C: PdClient> Store<T, C> {
         self.register_pd_store_heartbeat_tick(event_loop);
     }
 
+    // 定时调度 gc
     fn handle_snap_mgr_gc(&mut self) -> Result<()> {
         let snap_keys = self.snap_mgr.list_idle_snap()?;
         if snap_keys.is_empty() {
@@ -2128,6 +2137,8 @@ impl<T: Transport, C: PdClient> Store<T, C> {
 
             if is_sending {
                 let s = self.snap_mgr.get_snapshot_for_sending(&key)?;
+                // snapshot后面的log被compacted掉了，这个snapshot发了也没法同时后续
+                // log继续同步
                 if key.term < compacted_term || key.idx < compacted_idx {
                     info!(
                         "[region {}] snap file {} has been compacted, delete.",
@@ -2135,6 +2146,7 @@ impl<T: Transport, C: PdClient> Store<T, C> {
                     );
                     self.snap_mgr.delete_snapshot(&key, s.as_ref(), false);
                 } else if let Ok(meta) = s.meta() {
+                    // default 4 hours to delete
                     let modified = box_try!(meta.modified());
                     if let Ok(elapsed) = modified.elapsed() {
                         if elapsed > self.cfg.snap_gc_timeout.0 {
@@ -2534,7 +2546,10 @@ impl<T: Transport, C: PdClient> mio::Handler for Store<T, C> {
         match timeout {
             Tick::Raft => self.on_raft_base_tick(event_loop),
             Tick::RaftLogGc => self.on_raft_gc_log_tick(event_loop),
+            // 对写入达到一定大小的region schedule 是否需要split的task
+            // apply/split_check.rs
             Tick::SplitRegionCheck => self.on_split_region_check_tick(event_loop),
+            // check if need to compact (rocksdb level) CF_DEFAULT, CF_WRITE  colomn(if had delete many keys
             Tick::CompactCheck => self.on_compact_check_tick(event_loop),
             Tick::PdHeartbeat => self.on_pd_heartbeat_tick(event_loop),
             Tick::PdStoreHeartbeat => self.on_pd_store_heartbeat_tick(event_loop),

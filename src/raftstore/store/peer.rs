@@ -186,7 +186,9 @@ pub struct Peer {
     pub peer: metapb::Peer,
     region_id: u64,
     pub raft_group: RawNode<PeerStorage>,
+    // proposals & apply_proposals 成功propose 了的cmd后放入
     proposals: ProposalQueue,
+    /// apply 的后应该要根据调用对应callback
     apply_proposals: Vec<Proposal>,
     pending_reads: ReadIndexQueue,
     // Record the last instant of each peer's heartbeat response.
@@ -206,6 +208,9 @@ pub struct Peer {
 
     // Index of last scheduled committed raft log.
     pub last_applying_idx: u64,
+    // 标志下次要做raftlog_log的index, 见on_ready_compact_log
+    // 初始值是0，意味这重启要从0开始扫一边？
+    // -- 不会，start_idx为0，会seek到第一个log开始删除
     pub last_compacted_idx: u64,
     // Approximate size of logs that is applied but not compacted yet.
     pub raft_log_size_hint: u64,
@@ -572,6 +577,7 @@ impl Peer {
         down_peers
     }
 
+    // 需要或在接收snap的peer matindex < truncated_idx 的个数
     pub fn collect_pending_peers(&self) -> Vec<metapb::Peer> {
         let mut pending_peers = Vec::with_capacity(self.region().get_peers().len());
         let status = self.raft_group.status();
@@ -784,6 +790,9 @@ impl Peer {
             }
         }
 
+        // 说明正的做apply snapshot region.rs Task::Apply
+        // 注册个 apply 的task  raftstore/store/worker/apply.rs里处理
+        // 做什么？
         if apply_snap_result.is_some() {
             let reg = ApplyTask::register(self);
             self.apply_scheduler.schedule(reg).unwrap();

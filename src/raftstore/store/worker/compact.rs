@@ -22,6 +22,7 @@ use std::fmt::{self, Display, Formatter};
 use std::error;
 use super::metrics::COMPACT_RANGE_CF;
 
+// 做rocksdb 的compact
 pub struct Task {
     pub cf_name: String,
     pub start_key: Option<Vec<u8>>, // None means smallest key

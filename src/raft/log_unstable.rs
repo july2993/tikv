@@ -92,6 +92,7 @@ impl Unstable {
         })
     }
 
+    // 通知log已经持久化到 idx, term
     pub fn stable_to(&mut self, idx: u64, term: u64) {
         let t = self.maybe_term(idx);
         if t.is_none() {

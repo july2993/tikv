@@ -1378,6 +1378,7 @@ impl<T: Storage> Raft<T> {
                             *e = Entry::new();
                             e.set_entry_type(EntryType::EntryNormal);
                         }
+                        // propose 就true 如果这个log 被移除没commit呢
                         self.pending_conf = true;
                     }
                 }

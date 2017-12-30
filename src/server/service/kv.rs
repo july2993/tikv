@@ -646,6 +646,8 @@ impl<T: RaftStoreRouter + 'static> tikvpb_grpc::Tikv for Service<T> {
         let timer = self.metrics.raw_get.start_coarse_timer();
 
         let (cb, future) = make_callback();
+        // cb(response): sent to a ch, then future get response
+        //
         let res = self.storage
             .async_raw_get(req.take_context(), req.take_key(), cb);
         if let Err(e) = res {

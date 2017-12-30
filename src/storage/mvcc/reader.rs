@@ -137,6 +137,7 @@ impl MvccReader {
         }
     }
 
+    //@return (comitted_ts, Write)
     pub fn seek_write(&mut self, key: &Key, ts: u64) -> Result<Option<(u64, Write)>> {
         self.seek_write_impl(key, ts, false)
     }
@@ -189,6 +190,7 @@ impl MvccReader {
         Ok(Some((commit_ts, write)))
     }
 
+    // return lock txn start_ts
     fn check_lock(&mut self, key: &Key, mut ts: u64) -> Result<Option<u64>> {
         if let Some(lock) = self.load_lock(key)? {
             if lock.ts <= ts {
@@ -409,6 +411,7 @@ impl MvccReader {
         start: Option<Key>,
         filter: F,
         limit: usize,
+        // Option<Key> the last key in Vec when reach limit or None
     ) -> Result<(Vec<(Key, Lock)>, Option<Key>)>
     where
         F: Fn(&Lock) -> bool,

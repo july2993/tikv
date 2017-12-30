@@ -166,6 +166,7 @@ pub struct ApplyOptions {
 ///   4. apply snapshot
 ///   5. snapshot gc
 pub trait Snapshot: Read + Write + Send {
+    // build 会把snapshot落地
     fn build(
         &mut self,
         snap: &DbSnapshot,
@@ -937,9 +938,12 @@ impl Snapshot for Snap {
         Ok(())
     }
 
+    // 对应snap数据一个个写到options.db里
     fn apply(&mut self, options: ApplyOptions) -> Result<()> {
         box_try!(self.validate(Arc::clone(&options.db)));
 
+        // 单个cf写入是原子的，但多个cf不原子，如果这时候只写了部分cf 就挂了会这样？会重新apply整个snapshot?  如果重新apply的话是没问题
+        // 单个cf也不原子，这里中间crash后会怎样？
         for cf_file in &mut self.cf_files {
             if cf_file.size == 0 {
                 // Skip empty cf file.
@@ -948,6 +952,7 @@ impl Snapshot for Snap {
 
             check_abort(&options.abort)?;
             let cf_handle = box_try!(rocksdb::get_cf_handle(&options.db, cf_file.cf));
+            // 文件对应<k1><v1><k2><v2>, 调用decode_copact**应该是压缩里之类
             if plain_file_used(cf_file.cf) {
                 let mut file = box_try!(File::open(&cf_file.path));
                 apply_plain_cf_file(&mut file, &options, cf_handle)?;
@@ -955,6 +960,8 @@ impl Snapshot for Snap {
                 let mut ingest_opt = IngestExternalFileOptions::new();
                 ingest_opt.move_files(true);
                 let path = cf_file.clone_path.to_str().unwrap();
+                // http://rocksdb.org/blog/2017/02/17/bulkoad-ingest-sst-file.html
+                // 直接注入sst file到rocksdb level 0
                 box_try!(
                     options
                         .db
@@ -1135,6 +1142,19 @@ impl SnapManager {
         Ok(())
     }
 
+    /* a inotify watch when receive a snap
+     ./data/kv2/snap/ CREATE rev_2_15_957476_lock.sst.tmp
+     ./data/kv2/snap/ CREATE rev_2_15_957476_write.sst.tmp
+     ./data/kv2/snap/ CREATE rev_2_15_957476.meta.tmp
+     ./data/kv2/snap/ MOVED_TO rev_2_15_957476_lock.sst
+     ./data/kv2/snap/ MOVED_TO rev_2_15_957476_write.sst
+     ./data/kv2/snap/ MOVED_TO rev_2_15_957476.meta
+     ./data/kv2/snap/ CREATE rev_2_15_957476_write.sst.clone
+     */
+
+    // 扫目录,获取非regist了的snapshot
+    // 生成的snapshot 文件名 gen.<region_id>.<index>.<term> or rev.*.*.*
+    // 一种是自己生成，一种是接收leader的
     // Return all snapshots which is idle not being used.
     pub fn list_idle_snap(&self) -> io::Result<Vec<(SnapKey, bool)>> {
         let core = self.core.rl();
@@ -1248,6 +1268,7 @@ impl SnapManager {
         Ok(Box::new(s))
     }
 
+    // data: RaftSnapshotData
     pub fn get_snapshot_for_receiving(
         &self,
         key: &SnapKey,

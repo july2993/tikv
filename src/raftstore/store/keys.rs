@@ -202,6 +202,7 @@ pub fn enc_start_key(region: &Region) -> Vec<u8> {
 }
 
 /// Get the `end_key` of current region in encoded form.
+// encoded就是存rocksdb的格式(加个表示data数据的前缀)
 pub fn enc_end_key(region: &Region) -> Vec<u8> {
     // only initialized region's end_key can be encoded, otherwise there must be bugs
     // somewhere.

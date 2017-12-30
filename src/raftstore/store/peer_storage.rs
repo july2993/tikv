@@ -72,6 +72,7 @@ impl PartialEq for SnapState {
             | (&SnapState::ApplyAborted, &SnapState::ApplyAborted)
             | (&SnapState::Generating(_), &SnapState::Generating(_)) => true,
             (&SnapState::Applying(ref b1), &SnapState::Applying(ref b2)) => {
+                // ??
                 b1.load(Ordering::Relaxed) == b2.load(Ordering::Relaxed)
             }
             _ => false,
@@ -79,7 +80,7 @@ impl PartialEq for SnapState {
     }
 }
 
-// Discard all log entries prior to compact_index. We must guarantee
+// Discard all log entries prior to compact_index(include compact_index). We must guarantee
 // that the compact_index is not greater than applied index.
 pub fn compact_raft_log(
     tag: &str,
@@ -302,6 +303,7 @@ pub struct InvokeContext {
     pub raft_state: RaftLocalState,
     pub apply_state: RaftApplyState,
     last_term: u64,
+    // 需要load snapshot, Some的时候RegionLocalStatus 是applying 状态
     pub snap_region: Option<Region>,
 }
 
@@ -385,6 +387,9 @@ pub fn recover_from_applying_state(
         Some(state) => state,
         None => RaftLocalState::new(),
     };
+
+    // apply 的时候写完kv, 要写raft_loca_state(但是可能没写这个的时候就crash了), 所以重启要
+    // 检查恢复
 
     // if we recv append log when applying snapshot, last_index in raft_local_state will
     // larger than snapshot_index. since raft_local_state is written to raft engine, and
@@ -534,6 +539,7 @@ impl PeerStorage {
         })
     }
 
+    // 有没 [low, high) 的log (compact掉的当没)
     fn check_range(&self, low: u64, high: u64) -> raft::Result<()> {
         if low > high {
             return Err(storage_error(format!(
@@ -685,6 +691,7 @@ impl PeerStorage {
         true
     }
 
+    // schedule region gen task to generate
     pub fn snapshot(&self) -> raft::Result<Snapshot> {
         let mut snap_state = self.snap_state.borrow_mut();
         let mut tried_cnt = self.snap_tried_cnt.borrow_mut();
@@ -833,6 +840,7 @@ impl PeerStorage {
             self.clear_meta(kv_wb, raft_wb)?;
         }
 
+        // 写入RegionLocalState -> region applying 状态
         write_peer_state(&self.kv_engine, kv_wb, &region, PeerState::Applying)?;
 
         let last_index = snap.get_metadata().get_index();
@@ -1033,6 +1041,8 @@ impl PeerStorage {
             0
         } else {
             fail_point!("raft_before_apply_snap");
+            // 非同步apply, 写db状态apply, 修改ctx, 什么时候正在apply?
+            // ~/code/tikv/src/raftstore/store/worker/region.rs 里do apply
             self.apply_snapshot(
                 &mut ctx,
                 &ready.snapshot,
@@ -1067,6 +1077,7 @@ impl PeerStorage {
                 // but not write raft_local_state to raft rocksdb in time.
                 // we write raft state to default rocksdb, with last index set to snap index,
                 // in case of recv raft log after snapshot.
+                // ????
                 ctx.save_snapshot_raft_state_to(
                     snapshot_index,
                     &self.kv_engine,
@@ -1107,6 +1118,7 @@ impl PeerStorage {
             }
         }
 
+        // schedule 个do snapshot的task /worker/region.rs Task::Apply
         self.schedule_applying_snapshot();
         let prev_region = self.region.clone();
         self.region = snap_region;
@@ -1224,6 +1236,7 @@ pub fn clear_meta(
     Ok(())
 }
 
+// 会落地snapshot  Snap::build
 pub fn do_snapshot(
     mgr: SnapManager,
     raft_db: &DB,
@@ -1275,6 +1288,7 @@ pub fn do_snapshot(
     snapshot.mut_metadata().set_term(key.term);
 
     let mut conf_state = ConfState::new();
+    // what about conf_state.learners
     for p in state.get_region().get_peers() {
         conf_state.mut_nodes().push(p.get_id());
     }

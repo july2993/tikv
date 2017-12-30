@@ -22,8 +22,8 @@ use super::super::types::Value;
 pub enum WriteType {
     Put,
     Delete,
-    Lock,
-    Rollback,
+    Lock,     // ?
+    Rollback, // ?
 }
 
 const FLAG_PUT: u8 = b'P';
