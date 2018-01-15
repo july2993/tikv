@@ -74,13 +74,13 @@ fn read_on_peer<T: Simulator>(
     let mut resp = cluster.call_command(request, timeout)?;
     if resp.get_header().has_error() {
         return Err(Error::Other(box_err!(
-            resp.mut_header().take_error().take_message()
+            resp.mut_header().take_error().take_message().to_string()
         )));
     }
     assert_eq!(resp.get_responses().len(), 1);
     assert_eq!(resp.get_responses()[0].get_cmd_type(), CmdType::Get);
     assert!(resp.get_responses()[0].has_get());
-    Ok(resp.mut_responses()[0].mut_get().take_value())
+    Ok(resp.mut_responses()[0].mut_get().take_value().to_vec())
 }
 
 fn must_read_on_peer<T: Simulator>(

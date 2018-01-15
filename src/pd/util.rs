@@ -395,7 +395,7 @@ pub fn try_connect_leader(
         .chain(&[previous_leader.clone()])
     {
         for ep in m.get_client_urls() {
-            match connect(Arc::clone(&env), security_mgr, ep.as_str()) {
+            match connect(Arc::clone(&env), security_mgr, &ep) {
                 Ok((_, r)) => {
                     let new_cluster_id = r.get_header().get_cluster_id();
                     if new_cluster_id == cluster_id {
@@ -420,7 +420,7 @@ pub fn try_connect_leader(
     if let Some(resp) = resp {
         let leader = resp.get_leader().clone();
         for ep in leader.get_client_urls() {
-            if let Ok((client, _)) = connect(Arc::clone(&env), security_mgr, ep.as_str()) {
+            if let Ok((client, _)) = connect(Arc::clone(&env), security_mgr, &ep) {
                 info!("connect to PD leader {:?}", ep);
                 return Ok((client, resp));
             }

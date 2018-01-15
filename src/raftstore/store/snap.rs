@@ -243,7 +243,7 @@ fn gen_snapshot_meta(cf_files: &[CfFile]) -> RaftStoreResult<SnapshotMeta> {
         }
 
         let mut cf_file_meta = SnapshotCFFile::new();
-        cf_file_meta.set_cf(cf_file.cf.to_owned());
+        cf_file_meta.set_cf(cf_file.cf.to_owned().into());
         cf_file_meta.set_size(cf_file.size);
         cf_file_meta.set_checksum(cf_file.checksum);
         meta.push(cf_file_meta);
@@ -1365,6 +1365,7 @@ mod test {
     use std::sync::Arc;
     use tempdir::TempDir;
     use protobuf::Message;
+    use bytes::Bytes;
 
     use super::{ApplyOptions, Snap, SnapEntry, SnapKey, SnapManager, Snapshot, SnapshotDeleter,
                 SnapshotStatistics, META_FILE_SUFFIX, SNAPSHOT_CFS, SNAP_GEN_PREFIX};
@@ -1441,8 +1442,8 @@ mod test {
         peer.set_id(peer_id);
         let mut region = Region::new();
         region.set_id(region_id);
-        region.set_start_key(b"a".to_vec());
-        region.set_end_key(b"z".to_vec());
+        region.set_start_key(Bytes::from(&b"a"[..]));
+        region.set_end_key(Bytes::from(&b"z"[..]));
         region.mut_region_epoch().set_version(1);
         region.mut_region_epoch().set_conf_ver(1);
         region.mut_peers().push(peer.clone());

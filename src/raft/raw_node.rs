@@ -187,7 +187,7 @@ impl<T: Storage> RawNode<T> {
                 cc.set_change_type(ConfChangeType::AddNode);
                 cc.set_node_id(peer.id);
                 if peer.context.is_some() {
-                    cc.set_context(peer.context.as_ref().unwrap().clone());
+                    cc.set_context(peer.context.as_ref().unwrap()[..].into());
                 }
                 let data =
                     protobuf::Message::write_to_bytes(&cc).expect("unexpected marshal error");
@@ -195,7 +195,7 @@ impl<T: Storage> RawNode<T> {
                 e.set_entry_type(EntryType::EntryConfChange);
                 e.set_term(1);
                 e.set_index(i as u64 + 1);
-                e.set_data(data);
+                e.set_data(data.into());
                 ents.push(e);
             }
             rn.raft.raft_log.append(&ents);
@@ -260,7 +260,7 @@ impl<T: Storage> RawNode<T> {
         m.set_msg_type(MessageType::MsgPropose);
         m.set_from(self.raft.id);
         let mut e = Entry::new();
-        e.set_data(data);
+        e.set_data(data.into());
         if sync_log {
             e.set_sync_log(true);
         }
@@ -275,7 +275,7 @@ impl<T: Storage> RawNode<T> {
         m.set_msg_type(MessageType::MsgPropose);
         let mut e = Entry::new();
         e.set_entry_type(EntryType::EntryConfChange);
-        e.set_data(data);
+        e.set_data(data.into());
         e.set_sync_log(true);
         m.set_entries(RepeatedField::from_vec(vec![e]));
         self.raft.step(m)
@@ -433,7 +433,7 @@ impl<T: Storage> RawNode<T> {
         let mut m = Message::new();
         m.set_msg_type(MessageType::MsgReadIndex);
         let mut e = Entry::new();
-        e.set_data(rctx);
+        e.set_data(rctx.into());
         m.set_entries(RepeatedField::from_vec(vec![e]));
         self.raft.step(m).is_ok();
     }

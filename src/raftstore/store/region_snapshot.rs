@@ -324,6 +324,7 @@ mod tests {
     use tempdir::TempDir;
     use rocksdb::{Writable, DB};
     use kvproto::metapb::{Peer, Region};
+    use bytes::Bytes;
 
     use raftstore::Result;
     use raftstore::store::engine::*;
@@ -362,8 +363,8 @@ mod tests {
         let mut r = Region::new();
         r.mut_peers().push(Peer::new());
         r.set_id(10);
-        r.set_start_key(b"a2".to_vec());
-        r.set_end_key(b"a7".to_vec());
+        r.set_start_key(Bytes::from(&b"a2"[..]));
+        r.set_end_key(Bytes::from(&b"a7"[..]));
 
         let base_data = vec![
             (b"a1".to_vec(), b"v1".to_vec()),
@@ -385,8 +386,8 @@ mod tests {
         let (engine, raft_engine) = new_temp_engine(&path);
         let mut r = Region::new();
         r.set_id(10);
-        r.set_start_key(b"key0".to_vec());
-        r.set_end_key(b"key4".to_vec());
+        r.set_start_key(Bytes::from(&b"key0"[..]));
+        r.set_end_key(Bytes::from(&b"key4"[..]));
         let store = new_peer_storage(Arc::clone(&engine), Arc::clone(&raft_engine), &r);
 
         let (key1, value1) = (b"key1", 2u64);

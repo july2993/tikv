@@ -95,7 +95,7 @@ impl Stream for SnapChunk {
             Ok(_) => {
                 self.remain_bytes -= buf.len();
                 let mut chunk = SnapshotChunk::new();
-                chunk.set_data(buf);
+                chunk.set_data(buf.into());
                 Ok(Async::Ready(Some((
                     chunk,
                     WriteFlags::default().buffer_hint(true),

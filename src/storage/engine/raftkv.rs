@@ -305,28 +305,28 @@ impl<S: RaftStoreRouter> Engine for RaftKv<S> {
             match m {
                 Modify::Delete(cf, k) => {
                     let mut delete = DeleteRequest::new();
-                    delete.set_key(k.encoded().to_owned());
+                    delete.set_key(k.encoded().to_owned().into());
                     if cf != CF_DEFAULT {
-                        delete.set_cf(cf.to_string());
+                        delete.set_cf(cf.into());
                     }
                     req.set_cmd_type(CmdType::Delete);
                     req.set_delete(delete);
                 }
                 Modify::Put(cf, k, v) => {
                     let mut put = PutRequest::new();
-                    put.set_key(k.encoded().to_owned());
-                    put.set_value(v);
+                    put.set_key(k.encoded()[..].into());
+                    put.set_value(v.into());
                     if cf != CF_DEFAULT {
-                        put.set_cf(cf.to_string());
+                        put.set_cf(cf.into());
                     }
                     req.set_cmd_type(CmdType::Put);
                     req.set_put(put);
                 }
                 Modify::DeleteRange(cf, start_key, end_key) => {
                     let mut delete_range = DeleteRangeRequest::new();
-                    delete_range.set_cf(cf.to_string());
-                    delete_range.set_start_key(start_key.encoded().to_owned());
-                    delete_range.set_end_key(end_key.encoded().to_owned());
+                    delete_range.set_cf(cf.into());
+                    delete_range.set_start_key(start_key.encoded()[..].into());
+                    delete_range.set_end_key(end_key.encoded()[..].into());
                     req.set_cmd_type(CmdType::DeleteRange);
                     req.set_delete_range(delete_range);
                 }

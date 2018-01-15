@@ -193,7 +193,7 @@ impl PdClient for RpcClient {
 
         let mut req = pdpb::GetRegionRequest::new();
         req.set_header(self.header());
-        req.set_region_key(key.to_vec());
+        req.set_region_key(key.into());
 
         let mut resp = sync_request(&self.leader_client, LEADER_CHANGE_RETRY, |client| {
             let option = CallOption::default().timeout(Duration::from_secs(REQUEST_TIMEOUT));
@@ -211,7 +211,7 @@ impl PdClient for RpcClient {
 
         let mut req = pdpb::GetRegionRequest::new();
         req.set_header(self.header());
-        req.set_region_key(key.to_vec());
+        req.set_region_key(key.into());
 
         let mut resp = sync_request(&self.leader_client, LEADER_CHANGE_RETRY, |client| {
             let option = CallOption::default().timeout(Duration::from_secs(REQUEST_TIMEOUT));

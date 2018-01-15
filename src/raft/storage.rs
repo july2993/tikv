@@ -145,7 +145,7 @@ impl MemStorageCore {
         if let Some(cs) = cs {
             self.snapshot.mut_metadata().set_conf_state(cs)
         }
-        self.snapshot.set_data(data);
+        self.snapshot.set_data(data.into());
         Ok(&self.snapshot)
     }
 
@@ -325,7 +325,7 @@ mod test {
         s.mut_metadata().set_index(index);
         s.mut_metadata().set_term(term);
         s.mut_metadata().mut_conf_state().set_nodes(nodes);
-        s.set_data(data);
+        s.set_data(data.into());
         s
     }
 

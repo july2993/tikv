@@ -683,8 +683,8 @@ mod tests {
         peer.set_store_id(id);
         let mut region = Region::new();
         region.set_id(id);
-        region.set_start_key(start_key);
-        region.set_end_key(end_key);
+        region.set_start_key(start_key.into());
+        region.set_end_key(end_key.into());
         region.mut_peers().push(peer);
         region
     }

@@ -230,8 +230,8 @@ mod test {
         let (_, start_key) = generate_index_data(table_id, idx_id, start, unique);
         let (_, end_key) = generate_index_data(table_id, idx_id, end, unique);
         let mut key_range = KeyRange::new();
-        key_range.set_start(start_key);
-        key_range.set_end(end_key);
+        key_range.set_start(start_key.into());
+        key_range.set_end(end_key.into());
         key_range
     }
 

@@ -2351,7 +2351,7 @@ fn new_verify_hash_request(
     let mut admin = AdminRequest::new();
     admin.set_cmd_type(AdminCmdType::VerifyHash);
     admin.mut_verify_hash().set_index(state.index);
-    admin.mut_verify_hash().set_hash(state.hash.clone());
+    admin.mut_verify_hash().set_hash(state.hash[..].into());
     request.set_admin_request(admin);
     request
 }

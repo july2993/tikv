@@ -213,10 +213,10 @@ impl Table {
         let mut range = KeyRange::new();
         let mut buf = Vec::with_capacity(8);
         buf.encode_i64(i64::MIN).unwrap();
-        range.set_start(table::encode_row_key(self.id, &buf));
+        range.set_start(table::encode_row_key(self.id, &buf).into());
         buf.clear();
         buf.encode_i64(i64::MAX).unwrap();
-        range.set_end(table::encode_row_key(self.id, &buf));
+        range.set_end(table::encode_row_key(self.id, &buf).into());
         range
     }
 
@@ -224,10 +224,10 @@ impl Table {
         let mut range = KeyRange::new();
         let mut buf = Vec::with_capacity(8);
         buf.encode_i64(i64::MIN).unwrap();
-        range.set_start(table::encode_index_seek_key(self.id, idx, &buf));
+        range.set_start(table::encode_index_seek_key(self.id, idx, &buf).into());
         buf.clear();
         buf.encode_i64(i64::MAX).unwrap();
-        range.set_end(table::encode_index_seek_key(self.id, idx, &buf));
+        range.set_end(table::encode_index_seek_key(self.id, idx, &buf).into());
         range
     }
 }
@@ -572,10 +572,10 @@ impl DAGSelect {
         let mut range = KeyRange::new();
         let mut buf = Vec::with_capacity(8);
         buf.encode_i64(i64::MIN).unwrap();
-        range.set_start(table::encode_row_key(table.id, &buf));
+        range.set_start(table::encode_row_key(table.id, &buf).into());
         buf.clear();
         buf.encode_i64(i64::MAX).unwrap();
-        range.set_end(table::encode_row_key(table.id, &buf));
+        range.set_end(table::encode_row_key(table.id, &buf).into());
 
         DAGSelect {
             execs: vec![exec],
@@ -764,7 +764,7 @@ impl DAGSelect {
 
         let mut req = Request::new();
         req.set_tp(REQ_TYPE_DAG);
-        req.set_data(dag.write_to_bytes().unwrap());
+        req.set_data(dag.write_to_bytes().unwrap().into());
         req.set_ranges(RepeatedField::from_vec(vec![self.key_range]));
         req.set_context(ctx);
         req

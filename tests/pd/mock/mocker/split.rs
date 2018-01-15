@@ -13,7 +13,7 @@
 
 use std::sync::Mutex;
 
-use protobuf::RepeatedField;
+use protobuf::{Chars, RepeatedField};
 
 use kvproto::pdpb::{GetMembersRequest, GetMembersResponse, Member, ResponseHeader};
 
@@ -54,10 +54,10 @@ impl PdMocker for Split {
         let mut members = Vec::with_capacity(eps.len());
         for (i, ep) in (&eps).into_iter().enumerate() {
             let mut m = Member::new();
-            m.set_name(format!("pd{}", i));
+            m.set_name(format!("pd{}", i).into());
             m.set_member_id(100 + i as u64);
-            m.set_client_urls(RepeatedField::from_vec(vec![ep.to_owned()]));
-            m.set_peer_urls(RepeatedField::from_vec(vec![ep.to_owned()]));
+            m.set_client_urls(vec![Chars::from(ep.as_str())]);
+            m.set_peer_urls(vec![Chars::from(ep.as_str())]);
             members.push(m);
         }
 

@@ -723,7 +723,7 @@ impl ApplyDelegate {
             .get_header()
             .get_uuid()
             .to_vec();
-        resp.mut_header().set_uuid(uuid);
+        resp.mut_header().set_uuid(uuid.into());
         resp.set_admin_response(response);
         Ok((resp, exec_result))
     }
@@ -882,11 +882,11 @@ impl ApplyDelegate {
         let mut new_region = region.clone();
         new_region.set_id(new_region_id);
         if right_derive {
-            region.set_start_key(split_key.to_vec());
-            new_region.set_end_key(split_key.to_vec());
+            region.set_start_key(split_key.to_vec().into());
+            new_region.set_end_key(split_key.to_vec().into());
         } else {
-            region.set_end_key(split_key.to_vec());
-            new_region.set_start_key(split_key.to_vec());
+            region.set_end_key(split_key.to_vec().into());
+            new_region.set_start_key(split_key.to_vec().into());
         }
 
         // Update new region peer ids.
@@ -1044,7 +1044,7 @@ impl ApplyDelegate {
             .get_header()
             .get_uuid()
             .to_vec();
-        resp.mut_header().set_uuid(uuid);
+        resp.mut_header().set_uuid(uuid.into());
         resp.set_responses(RepeatedField::from_vec(responses));
 
         let exec_res = if ranges.is_empty() {
@@ -1240,7 +1240,7 @@ pub fn do_get(tag: &str, region: &Region, snap: &Snapshot, req: &Request) -> Res
             .unwrap_or_else(|e| panic!("{} failed to get {}: {:?}", tag, escape(key), e))
     };
     if let Some(res) = res {
-        resp.mut_get().set_value(res.to_vec());
+        resp.mut_get().set_value(res.to_vec().into());
     }
 
     Ok(resp)
@@ -1637,6 +1637,7 @@ mod tests {
     use protobuf::Message;
     use kvproto::metapb::RegionEpoch;
     use kvproto::raft_cmdpb::CmdType;
+    use bytes::Bytes;
 
     use raftstore::coprocessor::*;
     use raftstore::store::msg::WriteResponse;
@@ -1668,7 +1669,7 @@ mod tests {
         let mut e = Entry::new();
         e.set_index(index);
         e.set_term(term);
-        req.map(|r| e.set_data(r.write_to_bytes().unwrap()));
+        req.map(|r| e.set_data(r.write_to_bytes().unwrap().into()));
         e
     }
 
@@ -1881,10 +1882,10 @@ mod tests {
             let mut cmd = Request::new();
             cmd.set_cmd_type(CmdType::Put);
             if let Some(cf) = cf {
-                cmd.mut_put().set_cf(cf.to_owned());
+                cmd.mut_put().set_cf(cf.into());
             }
-            cmd.mut_put().set_key(key.to_vec());
-            cmd.mut_put().set_value(value.to_vec());
+            cmd.mut_put().set_key(key.into());
+            cmd.mut_put().set_value(value.into());
             self.req.mut_requests().push(cmd);
             self
         }
@@ -1909,9 +1910,9 @@ mod tests {
             let mut cmd = Request::new();
             cmd.set_cmd_type(CmdType::Delete);
             if let Some(cf) = cf {
-                cmd.mut_delete().set_cf(cf.to_owned());
+                cmd.mut_delete().set_cf(cf.into());
             }
-            cmd.mut_delete().set_key(key.to_vec());
+            cmd.mut_delete().set_key(key.into());
             self.req.mut_requests().push(cmd);
             self
         }
@@ -1925,16 +1926,17 @@ mod tests {
             let mut cmd = Request::new();
             cmd.set_cmd_type(CmdType::DeleteRange);
             if let Some(cf) = cf {
-                cmd.mut_delete_range().set_cf(cf.to_owned());
+                cmd.mut_delete_range().set_cf(cf.into());
             }
-            cmd.mut_delete_range().set_start_key(start_key.to_vec());
-            cmd.mut_delete_range().set_end_key(end_key.to_vec());
+            cmd.mut_delete_range().set_start_key(start_key.into());
+            cmd.mut_delete_range().set_end_key(end_key.into());
             self.req.mut_requests().push(cmd);
             self
         }
 
         fn build(mut self) -> Entry {
-            self.entry.set_data(self.req.write_to_bytes().unwrap());
+            self.entry
+                .set_data(self.req.write_to_bytes().unwrap().into());
             self.entry
         }
     }
@@ -1963,7 +1965,7 @@ mod tests {
     fn test_handle_raft_committed_entries() {
         let (_path, db) = create_tmp_engine("test-delegate");
         let mut reg = Registration::default();
-        reg.region.set_end_key(b"k5".to_vec());
+        reg.region.set_end_key(Bytes::from(&b"k5"[..]));
         reg.region.mut_region_epoch().set_version(3);
         let mut delegate = ApplyDelegate::from_registration(Arc::clone(&db), reg);
         let (tx, rx) = mpsc::channel();

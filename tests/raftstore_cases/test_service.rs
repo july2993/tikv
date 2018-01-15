@@ -18,6 +18,7 @@ use tikv::storage::{Key, CF_DEFAULT, CF_LOCK, CF_RAFT, CF_WRITE};
 use tikv::storage::mvcc::{Lock, LockType};
 use tikv::raftstore::store::{keys, Mutable, Peekable};
 
+use bytes::Bytes;
 use kvproto::kvrpcpb::*;
 use kvproto::raft_serverpb::*;
 use kvproto::coprocessor::*;
@@ -61,7 +62,7 @@ fn must_new_cluster_and_kv_client() -> (Cluster<ServerCluster>, TikvClient, Cont
 #[test]
 fn test_rawkv() {
     let (_cluster, client, ctx) = must_new_cluster_and_kv_client();
-    let (k, v) = (b"key".to_vec(), b"value".to_vec());
+    let (k, v) = (Bytes::from(&b"key"[..]), Bytes::from(&b"value"[..]));
 
     // Raw put
     let mut put_req = RawPutRequest::new();
@@ -108,7 +109,7 @@ fn must_kv_prewrite(client: &TikvClient, ctx: Context, muts: Vec<Mutation>, pk: 
     let mut prewrite_req = PrewriteRequest::new();
     prewrite_req.set_context(ctx);
     prewrite_req.set_mutations(muts.into_iter().collect());
-    prewrite_req.primary_lock = pk;
+    prewrite_req.primary_lock = Bytes::from(pk);
     prewrite_req.start_version = ts;
     prewrite_req.lock_ttl = prewrite_req.start_version + 1;
     let prewrite_resp = client.kv_prewrite(&prewrite_req).unwrap();
@@ -134,7 +135,7 @@ fn must_kv_commit(
     let mut commit_req = CommitRequest::new();
     commit_req.set_context(ctx);
     commit_req.start_version = start_ts;
-    commit_req.set_keys(keys.into_iter().collect());
+    commit_req.set_keys(keys.into_iter().map(Bytes::from).collect());
     commit_req.commit_version = commit_ts;
     let commit_resp = client.kv_commit(&commit_req).unwrap();
     assert!(
@@ -148,7 +149,7 @@ fn must_kv_commit(
 #[test]
 fn test_mvcc_basic() {
     let (_cluster, client, ctx) = must_new_cluster_and_kv_client();
-    let (k, v) = (b"key".to_vec(), b"value".to_vec());
+    let (k, v) = (Bytes::from(&b"key"[..]), Bytes::from(&b"value"[..]));
 
     let mut ts = 0;
 
@@ -163,7 +164,7 @@ fn test_mvcc_basic() {
         &client,
         ctx.clone(),
         vec![mutation],
-        k.clone(),
+        k.to_vec(),
         prewrite_start_version,
     );
 
@@ -173,7 +174,7 @@ fn test_mvcc_basic() {
     must_kv_commit(
         &client,
         ctx.clone(),
-        vec![k.clone()],
+        vec![k.to_vec()],
         prewrite_start_version,
         commit_version,
     );
@@ -226,7 +227,7 @@ fn test_mvcc_basic() {
 #[test]
 fn test_mvcc_rollback_and_cleanup() {
     let (_cluster, client, ctx) = must_new_cluster_and_kv_client();
-    let (k, v) = (b"key".to_vec(), b"value".to_vec());
+    let (k, v) = (Bytes::from(&b"key"[..]), Bytes::from(&b"value"[..]));
 
     let mut ts = 0;
 
@@ -241,7 +242,7 @@ fn test_mvcc_rollback_and_cleanup() {
         &client,
         ctx.clone(),
         vec![mutation],
-        k.clone(),
+        k.to_vec(),
         prewrite_start_version,
     );
 
@@ -251,7 +252,7 @@ fn test_mvcc_rollback_and_cleanup() {
     must_kv_commit(
         &client,
         ctx.clone(),
-        vec![k.clone()],
+        vec![k.to_vec()],
         prewrite_start_version,
         commit_version,
     );
@@ -259,7 +260,7 @@ fn test_mvcc_rollback_and_cleanup() {
     // Prewrite puts some locks.
     ts += 1;
     let prewrite_start_version2 = ts;
-    let (k2, v2) = (b"key2".to_vec(), b"value2".to_vec());
+    let (k2, v2) = (Bytes::from(&b"key2"[..]), Bytes::from(&b"value2"[..]));
     let mut mut_pri = Mutation::new();
     mut_pri.op = Op::Put;
     mut_pri.key = k2.clone();
@@ -267,12 +268,12 @@ fn test_mvcc_rollback_and_cleanup() {
     let mut mut_sec = Mutation::new();
     mut_sec.op = Op::Put;
     mut_sec.key = k.clone();
-    mut_sec.value = b"foo".to_vec();
+    mut_sec.value = Bytes::from(&b"foo"[..]);
     must_kv_prewrite(
         &client,
         ctx.clone(),
         vec![mut_pri, mut_sec],
-        k2.clone(),
+        k2.to_vec(),
         prewrite_start_version2,
     );
 
@@ -335,7 +336,7 @@ fn test_mvcc_resolve_lock_gc_and_delete() {
     use kvproto::kvrpcpb::*;
     use protobuf;
     let (_cluster, client, ctx) = must_new_cluster_and_kv_client();
-    let (k, v) = (b"key".to_vec(), b"value".to_vec());
+    let (k, v) = (Bytes::from(&b"key"[..]), Bytes::from(&b"value"[..]));
 
     let mut ts = 0;
 
@@ -350,7 +351,7 @@ fn test_mvcc_resolve_lock_gc_and_delete() {
         &client,
         ctx.clone(),
         vec![mutation],
-        k.clone(),
+        k.to_vec(),
         prewrite_start_version,
     );
 
@@ -360,7 +361,7 @@ fn test_mvcc_resolve_lock_gc_and_delete() {
     must_kv_commit(
         &client,
         ctx.clone(),
-        vec![k.clone()],
+        vec![k.to_vec()],
         prewrite_start_version,
         commit_version,
     );
@@ -368,8 +369,8 @@ fn test_mvcc_resolve_lock_gc_and_delete() {
     // Prewrite puts some locks.
     ts += 1;
     let prewrite_start_version2 = ts;
-    let (k2, v2) = (b"key2".to_vec(), b"value2".to_vec());
-    let new_v = b"new value".to_vec();
+    let (k2, v2) = (Bytes::from(&b"key2"[..]), Bytes::from(&b"value2"[..]));
+    let new_v = Bytes::from(&b"new value"[..]);
     let mut mut_pri = Mutation::new();
     mut_pri.op = Op::Put;
     mut_pri.key = k.clone();
@@ -377,12 +378,12 @@ fn test_mvcc_resolve_lock_gc_and_delete() {
     let mut mut_sec = Mutation::new();
     mut_sec.op = Op::Put;
     mut_sec.key = k2.clone();
-    mut_sec.value = v2.to_vec();
+    mut_sec.value = v2.clone();
     must_kv_prewrite(
         &client,
         ctx.clone(),
         vec![mut_pri, mut_sec],
-        k.clone(),
+        k.to_vec(),
         prewrite_start_version2,
     );
 
@@ -457,8 +458,8 @@ fn test_mvcc_resolve_lock_gc_and_delete() {
     // Delete range
     let mut del_req = DeleteRangeRequest::new();
     del_req.set_context(ctx.clone());
-    del_req.start_key = b"a".to_vec();
-    del_req.end_key = b"z".to_vec();
+    del_req.start_key = Bytes::from(&b"a"[..]);
+    del_req.end_key = Bytes::from(&b"z"[..]);
     let del_resp = client.kv_delete_range(&del_req).unwrap();
     assert!(!del_resp.has_region_error());
     assert!(del_resp.error.is_empty());
@@ -496,7 +497,7 @@ fn test_split_region() {
     let key = b"b";
     let mut req = SplitRegionRequest::new();
     req.set_context(ctx);
-    req.set_split_key(key.to_vec());
+    req.set_split_key(key[..].into());
     let resp = client.split_region(&req).unwrap();
     assert_eq!(
         Key::from_encoded(resp.get_left().get_end_key().to_vec())
@@ -536,13 +537,13 @@ fn test_debug_get() {
 
     // Debug get
     let mut req = debugpb::GetRequest::new();
-    req.set_cf(CF_DEFAULT.to_owned());
-    req.set_db(debugpb::DB::KV);
-    req.set_key(key);
+    req.set_cf(CF_DEFAULT.into());
+    req.set_db(debugpb::DB::KV.into());
+    req.set_key(key.into());
     let mut resp = debug_client.get(&req.clone()).unwrap();
-    assert_eq!(resp.take_value(), v);
+    assert_eq!(resp.take_value(), Bytes::from(&v[..]));
 
-    req.set_key(b"foo".to_vec());
+    req.set_key(Bytes::from(&b"foo"[..]));
     match debug_client.get(&req).unwrap_err() {
         Error::RpcFailure(status) => {
             assert_eq!(status.status, RpcStatusCode::NotFound);
@@ -563,7 +564,7 @@ fn test_debug_raft_log() {
     entry.set_term(1);
     entry.set_index(1);
     entry.set_entry_type(eraftpb::EntryType::EntryNormal);
-    entry.set_data(vec![42]);
+    entry.set_data(vec![42].into());
     engine.put_msg(&key, &entry).unwrap();
     assert_eq!(
         engine.get_msg::<eraftpb::Entry>(&key).unwrap().unwrap(),
@@ -656,6 +657,8 @@ fn test_debug_region_info() {
 
 #[test]
 fn test_debug_region_size() {
+    use protobuf::Chars;
+
     let (cluster, debug_client, store_id) = must_new_cluster_and_debug_client();
     let engine = cluster.get_engine(store_id);
 
@@ -664,8 +667,8 @@ fn test_debug_region_size() {
     let region_state_key = keys::region_state_key(region_id);
     let mut region = metapb::Region::new();
     region.set_id(region_id);
-    region.set_start_key(b"a".to_vec());
-    region.set_end_key(b"z".to_vec());
+    region.set_start_key(Bytes::from(&b"a"[..]));
+    region.set_end_key(Bytes::from(&b"z"[..]));
     let mut state = RegionLocalState::new();
     state.set_region(region);
     let cf_raft = engine.cf_handle(CF_RAFT).unwrap();
@@ -682,11 +685,11 @@ fn test_debug_region_size() {
 
     let mut req = debugpb::RegionSizeRequest::new();
     req.set_region_id(region_id);
-    req.set_cfs(cfs.iter().map(|s| s.to_string()).collect());
+    req.set_cfs(cfs.iter().map(|s| Chars::from(*s)).collect());
     let entries = debug_client.region_size(&req).unwrap().take_entries();
     assert_eq!(entries.len(), 4);
     for e in entries.into_vec() {
-        cfs.iter().find(|&&c| c == e.cf).unwrap();
+        cfs.iter().find(|&&c| c == &*e.cf).unwrap();
         assert!(e.size > 0);
     }
 
@@ -749,8 +752,8 @@ fn test_debug_scan_mvcc() {
     }
 
     let mut req = debugpb::ScanMvccRequest::new();
-    req.set_from_key(keys::data_key(b"m"));
-    req.set_to_key(keys::data_key(b"n"));
+    req.set_from_key(keys::data_key(b"m").into());
+    req.set_to_key(keys::data_key(b"n").into());
     req.set_limit(1);
 
     let receiver = debug_client.scan_mvcc(&req).unwrap();

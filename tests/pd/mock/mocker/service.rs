@@ -18,7 +18,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use kvproto::metapb::{Peer, Region, Store};
 use kvproto::pdpb::*;
 
-use protobuf::RepeatedField;
+use protobuf::{Chars, RepeatedField};
 
 use super::*;
 
@@ -55,10 +55,10 @@ fn make_members_response(eps: Vec<String>) -> GetMembersResponse {
     let mut members = Vec::with_capacity(eps.len());
     for (i, ep) in (&eps).into_iter().enumerate() {
         let mut m = Member::new();
-        m.set_name(format!("pd{}", i));
+        m.set_name(format!("pd{}", i).into());
         m.set_member_id(100 + i as u64);
-        m.set_client_urls(RepeatedField::from_vec(vec![ep.to_owned()]));
-        m.set_peer_urls(RepeatedField::from_vec(vec![ep.to_owned()]));
+        m.set_client_urls(vec![Chars::from(ep.as_str())]);
+        m.set_peer_urls(vec![Chars::from(ep.as_str())]);
         members.push(m);
     }
 
@@ -87,7 +87,7 @@ impl PdMocker for Service {
         if self.is_bootstrapped.load(Ordering::SeqCst) {
             let mut err = Error::new();
             err.field_type = ErrorType::UNKNOWN;
-            err.set_message("cluster is already bootstrapped".to_owned());
+            err.set_message("cluster is already bootstrapped".into());
             header.set_error(err);
             resp.set_header(header);
             return Some(Ok(resp));
@@ -136,7 +136,7 @@ impl PdMocker for Service {
                 let mut header = Service::header();
                 let mut err = Error::new();
                 err.field_type = ErrorType::UNKNOWN;
-                err.set_message(format!("store not found {}", req.get_store_id()));
+                err.set_message(format!("store not found {}", req.get_store_id()).into());
                 header.set_error(err);
                 resp.set_header(header);
                 Some(Ok(resp))
@@ -166,7 +166,7 @@ impl PdMocker for Service {
         let mut header = Service::header();
         let mut err = Error::new();
         err.field_type = ErrorType::UNKNOWN;
-        err.set_message(format!("region not found {:?}", key));
+        err.set_message(format!("region not found {:?}", key).into());
         header.set_error(err);
         resp.set_header(header);
         Some(Ok(resp))
@@ -190,7 +190,7 @@ impl PdMocker for Service {
                 let mut header = Service::header();
                 let mut err = Error::new();
                 err.field_type = ErrorType::UNKNOWN;
-                err.set_message(format!("region not found {}", req.region_id));
+                err.set_message(format!("region not found {}", req.region_id).into());
                 header.set_error(err);
                 resp.set_header(header);
                 Some(Ok(resp))

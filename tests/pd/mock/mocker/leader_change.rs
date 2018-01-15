@@ -14,7 +14,7 @@
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
-use protobuf::RepeatedField;
+use protobuf::{Chars, RepeatedField};
 use kvproto::pdpb::*;
 
 use super::*;
@@ -96,19 +96,19 @@ impl PdMocker for LeaderChange {
         let mut members = Vec::with_capacity(eps.len());
         for (i, ep) in (&eps).into_iter().enumerate() {
             let mut m = Member::new();
-            m.set_name(format!("pd{}", i));
+            m.set_name(format!("pd{}", i).into());
             m.set_member_id(100 + i as u64);
-            m.set_client_urls(RepeatedField::from_vec(vec![ep.to_owned()]));
-            m.set_peer_urls(RepeatedField::from_vec(vec![ep.to_owned()]));
+            m.set_client_urls(vec![Chars::from(ep.to_owned())]);
+            m.set_peer_urls(vec![Chars::from(ep.to_owned())]);
             members.push(m);
         }
 
         // A dead PD
         let mut m = Member::new();
         m.set_member_id(DEAD_ID);
-        m.set_name(DEAD_NAME.to_owned());
-        m.set_client_urls(RepeatedField::from_vec(vec![DEAD_URL.to_owned()]));
-        m.set_peer_urls(RepeatedField::from_vec(vec![DEAD_URL.to_owned()]));
+        m.set_name(DEAD_NAME.into());
+        m.set_client_urls(vec![Chars::from(DEAD_URL)]);
+        m.set_peer_urls(vec![Chars::from(DEAD_URL)]);
         members.push(m);
 
         let mut header = ResponseHeader::new();

@@ -409,8 +409,8 @@ mod tests {
         ];
         for (key, start_key, end_key, is_in_region, is_in_region_inclusive) in test_cases {
             let mut region = metapb::Region::new();
-            region.set_start_key(start_key.as_bytes().to_vec());
-            region.set_end_key(end_key.as_bytes().to_vec());
+            region.set_start_key(start_key.into());
+            region.set_end_key(end_key.into());
             let mut result = check_key_in_region(key.as_bytes(), &region);
             assert_eq!(result.is_ok(), is_in_region);
             result = check_key_in_region_inclusive(key.as_bytes(), &region);
@@ -502,8 +502,8 @@ mod tests {
         peer.set_store_id(id);
         let mut region = metapb::Region::new();
         region.set_id(id);
-        region.set_start_key(start_key);
-        region.set_end_key(end_key);
+        region.set_start_key(start_key.into());
+        region.set_end_key(end_key.into());
         region.mut_peers().push(peer);
         region
     }

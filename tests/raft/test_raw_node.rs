@@ -29,6 +29,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use kvproto::eraftpb::*;
 use protobuf::{self, ProtobufEnum};
+use bytes::Bytes;
 use tikv::raft::*;
 use tikv::raft::storage::MemStorage;
 use super::test_raft::*;
@@ -46,7 +47,7 @@ fn entry(t: EntryType, term: u64, i: u64, data: Option<Vec<u8>>) -> Entry {
     e.set_index(i);
     e.set_term(term);
     if let Some(d) = data {
-        e.set_data(d);
+        e.set_data(d.into());
     }
     e.set_entry_type(t);
     e
@@ -123,7 +124,7 @@ fn test_raw_node_read_index_to_old_leader() {
     // elect r1 as leader
     nt.send(vec![new_message(1, 1, MessageType::MsgHup, 0)]);
     let mut test_entries = Entry::new();
-    test_entries.set_data(b"testdata".to_vec());
+    test_entries.set_data(Bytes::from(&b"testdata"[..]));
 
     // send readindex request to r2(follower)
     let _ = nt.peers.get_mut(&2).unwrap().step(new_message_with_entries(
@@ -429,7 +430,7 @@ fn test_skip_bcast_commit() {
 
     // Without bcast commit, followers will not update its commit index immediately.
     let mut test_entries = Entry::new();
-    test_entries.set_data(b"testdata".to_vec());
+    test_entries.set_data(Bytes::from(&b"testdata"[..]));
     let msg = new_message_with_entries(1, 1, MessageType::MsgPropose, vec![test_entries.clone()]);
     nt.send(vec![msg.clone()]);
     assert_eq!(nt.peers[&1].raft_log.committed, 2);

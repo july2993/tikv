@@ -397,10 +397,10 @@ impl MvccInfoIterator {
         if let Some((key, value)) = <&mut DBIterator as Iterator>::next(&mut iter) {
             let lock = box_try!(Lock::parse(&value));
             let mut lock_info = LockInfo::default();
-            lock_info.set_primary_lock(lock.primary);
+            lock_info.set_primary_lock(lock.primary.into());
             lock_info.set_lock_version(lock.ts);
             lock_info.set_lock_ttl(lock.ttl);
-            lock_info.set_key(key.clone());
+            lock_info.set_key(key[..].into());
             return Ok(Some((key, lock_info)));
         };
         Ok(None)
@@ -412,7 +412,7 @@ impl MvccInfoIterator {
             for (key, value) in vec_kv {
                 let mut value_info = ValueInfo::default();
                 value_info.set_is_short_value(is_short_value(&value));
-                value_info.set_value(value);
+                value_info.set_value(value.into());
                 let encoded_key = Key::from_encoded(keys::origin_key(&key).to_owned());
                 value_info.set_ts(box_try!(encoded_key.decode_ts()));
                 values.push(value_info);
@@ -546,6 +546,7 @@ mod tests {
     use kvproto::metapb;
     use kvproto::eraftpb::EntryType;
     use tempdir::TempDir;
+    use bytes::Bytes;
 
     use raftstore::store::engine::Mutable;
     use storage::{CF_DEFAULT, CF_LOCK, CF_RAFT, CF_WRITE};
@@ -625,7 +626,7 @@ mod tests {
         entry.set_term(1);
         entry.set_index(1);
         entry.set_entry_type(EntryType::EntryNormal);
-        entry.set_data(vec![42]);
+        entry.set_data(vec![42].into());
         engine.put_msg(&key, &entry).unwrap();
         assert_eq!(engine.get_msg::<Entry>(&key).unwrap().unwrap(), entry);
 
@@ -703,8 +704,8 @@ mod tests {
         let region_state_key = keys::region_state_key(region_id);
         let mut region = metapb::Region::new();
         region.set_id(region_id);
-        region.set_start_key(b"a".to_vec());
-        region.set_end_key(b"zz".to_vec());
+        region.set_start_key(Bytes::from(&b"a"[..]));
+        region.set_end_key(Bytes::from(&b"zz"[..]));
         let mut state = RegionLocalState::new();
         state.set_region(region);
         let cf_raft = engine.cf_handle(CF_RAFT).unwrap();

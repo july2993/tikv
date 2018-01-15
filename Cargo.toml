@@ -43,7 +43,6 @@ libc = "0.2"
 crc = "1.2"
 fs2 = "0.4"
 clippy = {version = "*", optional = true}
-protobuf = "1.4"
 nix = "0.9.0"
 utime = "0.2"
 chrono = "0.4"
@@ -69,6 +68,7 @@ futures-cpupool = "0.1"
 zipf = "0.2.0"
 bitflags = "1.0.1"
 fail = "0.2"
+bytes = "0.4"
 
 [target.'cfg(unix)'.dependencies]
 signal = "0.4"
@@ -77,7 +77,8 @@ signal = "0.4"
 git = "https://github.com/pingcap/rust-rocksdb.git"
 
 [dependencies.kvproto]
-git = "https://github.com/pingcap/kvproto.git"
+git = "https://github.com/july2993/kvproto.git"
+branch = "bytes"
 
 [dependencies.tipb]
 git = "https://github.com/pingcap/tipb.git"
@@ -97,8 +98,9 @@ optional = true
 version = "0.2"
 features = ["secure"]
 
-[replace]
-"protobuf:1.4.1" = { git = "https://github.com/stepancheg/rust-protobuf.git" }
+[dependencies.protobuf]
+version = "1.4"
+features = ["with-bytes"]
 
 [profile.dev]
 opt-level = 0  # Controls the --opt-level the compiler builds with

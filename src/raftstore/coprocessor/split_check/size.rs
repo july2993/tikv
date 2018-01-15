@@ -122,6 +122,7 @@ mod tests {
     use kvproto::metapb::Peer;
     use rocksdb::{ColumnFamilyOptions, DBOptions};
     use kvproto::metapb::Region;
+    use bytes::Bytes;
 
     use storage::ALL_CFS;
     use raftstore::store::{keys, Msg, SplitCheckRunner, SplitCheckTask};
@@ -149,8 +150,8 @@ mod tests {
 
         let mut region = Region::new();
         region.set_id(1);
-        region.set_start_key(vec![]);
-        region.set_end_key(vec![]);
+        region.set_start_key(Bytes::new());
+        region.set_end_key(Bytes::new());
         region.mut_peers().push(Peer::new());
         region.mut_region_epoch().set_version(2);
         region.mut_region_epoch().set_conf_ver(5);

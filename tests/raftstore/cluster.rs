@@ -349,8 +349,8 @@ impl<T: Simulator> Cluster<T> {
         let region_id = self.pd_client.alloc_id().unwrap();
         let peer_id = self.pd_client.alloc_id().unwrap();
         region.set_id(region_id);
-        region.set_start_key(keys::EMPTY_KEY.to_vec());
-        region.set_end_key(keys::EMPTY_KEY.to_vec());
+        region.set_start_key(keys::EMPTY_KEY.into());
+        region.set_end_key(keys::EMPTY_KEY.into());
         region.mut_region_epoch().set_version(1);
         region.mut_region_epoch().set_conf_ver(1);
         let peer = new_peer(peer_id, peer_id);
@@ -370,8 +370,8 @@ impl<T: Simulator> Cluster<T> {
 
         let mut region = metapb::Region::new();
         region.set_id(1);
-        region.set_start_key(keys::EMPTY_KEY.to_vec());
-        region.set_end_key(keys::EMPTY_KEY.to_vec());
+        region.set_start_key(keys::EMPTY_KEY.into());
+        region.set_end_key(keys::EMPTY_KEY.into());
         region.mut_region_epoch().set_version(1);
         region.mut_region_epoch().set_conf_ver(1);
 
@@ -575,7 +575,7 @@ impl<T: Simulator> Cluster<T> {
         assert_eq!(resp.get_responses().len(), 1);
         assert_eq!(resp.get_responses()[0].get_cmd_type(), CmdType::Get);
         if resp.get_responses()[0].has_get() {
-            Some(resp.mut_responses()[0].mut_get().take_value())
+            Some(resp.mut_responses()[0].mut_get().take_value().to_vec())
         } else {
             None
         }

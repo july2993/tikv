@@ -38,6 +38,7 @@ extern crate backtrace;
 #[macro_use]
 extern crate bitflags;
 extern crate byteorder;
+extern crate bytes;
 extern crate chrono;
 extern crate crc;
 #[macro_use]

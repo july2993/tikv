@@ -115,8 +115,8 @@ fn main() {
                 continue;
             }
             let mut inject_req = debugpb::InjectFailPointRequest::new();
-            inject_req.set_name(name);
-            inject_req.set_actions(actions);
+            inject_req.set_name(name.into());
+            inject_req.set_actions(actions.into());
 
             let option = CallOption::default().timeout(Duration::from_secs(10));
             client.inject_fail_point_opt(&inject_req, option).unwrap();
@@ -131,7 +131,7 @@ fn main() {
 
         for (name, _) in list {
             let mut recover_req = debugpb::RecoverFailPointRequest::new();
-            recover_req.set_name(name);
+            recover_req.set_name(name.into());
 
             let option = CallOption::default().timeout(Duration::from_secs(10));
             client.recover_fail_point_opt(&recover_req, option).unwrap();

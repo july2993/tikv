@@ -1406,7 +1406,7 @@ impl Peer {
         let mut cc = eraftpb::ConfChange::new();
         cc.set_change_type(change_peer.get_change_type());
         cc.set_node_id(change_peer.get_peer().get_id());
-        cc.set_context(data);
+        cc.set_context(data.into());
 
         info!(
             "{} propose conf change {:?} peer {:?}",
@@ -1598,8 +1598,8 @@ impl Peer {
             (msg_type == MessageType::MsgHeartbeat && msg.get_commit() == INVALID_INDEX))
         {
             let region = self.region();
-            send_msg.set_start_key(region.get_start_key().to_vec());
-            send_msg.set_end_key(region.get_end_key().to_vec());
+            send_msg.set_start_key(region.get_start_key()[..].into());
+            send_msg.set_end_key(region.get_end_key()[..].into());
         }
 
         send_msg.set_message(msg);

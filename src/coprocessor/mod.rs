@@ -74,9 +74,9 @@ impl From<txn::Error> for Error {
                 ttl,
             }) => {
                 let mut info = LockInfo::new();
-                info.set_primary_lock(primary);
+                info.set_primary_lock(primary.into());
                 info.set_lock_version(ts);
-                info.set_key(key);
+                info.set_key(key.into());
                 info.set_lock_ttl(ttl);
                 Error::Locked(info)
             }

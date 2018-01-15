@@ -18,6 +18,7 @@ use futures_cpupool::{Builder, CpuPool};
 use kvproto::debugpb_grpc;
 use kvproto::debugpb::*;
 use fail;
+use std::ops::Deref;
 
 use raftstore::store::Engines;
 use server::debug::{Debugger, Error};
@@ -85,11 +86,11 @@ impl debugpb_grpc::Debug for Service {
         let f = self.pool
             .spawn(
                 future::ok(self.debugger.clone())
-                    .and_then(move |debugger| debugger.get(db, &cf, key.as_slice())),
+                    .and_then(move |debugger| debugger.get(db, &cf, &key)),
             )
             .map(|value| {
                 let mut resp = GetResponse::new();
-                resp.set_value(value);
+                resp.set_value(value.into());
                 resp
             });
 
@@ -157,13 +158,15 @@ impl debugpb_grpc::Debug for Service {
         const TAG: &str = "debug_region_size";
 
         let region_id = req.get_region_id();
-        let cfs = req.take_cfs().into_vec();
+        let cfs = req.take_cfs();
 
         let f = self.pool
-            .spawn(
-                future::ok(self.debugger.clone())
-                    .and_then(move |debugger| debugger.region_size(region_id, cfs)),
-            )
+            .spawn(future::ok(self.debugger.clone()).and_then(move |debugger| {
+                debugger.region_size(
+                    region_id,
+                    cfs.iter().map(|x| x.deref().to_string()).collect(),
+                )
+            }))
             .map(|entries| {
                 let mut resp = RegionSizeResponse::new();
                 resp.set_entries(
@@ -171,7 +174,7 @@ impl debugpb_grpc::Debug for Service {
                         .into_iter()
                         .map(|(cf, size)| {
                             let mut entry = RegionSizeResponse_Entry::new();
-                            entry.set_cf(cf);
+                            entry.set_cf(cf.into());
                             entry.set_size(size as u64);
                             entry
                         })
@@ -201,7 +204,7 @@ impl debugpb_grpc::Debug for Service {
                     .map_err(|e| Service::error_to_grpc_error("scan_mvcc", e))
                     .map(|(key, mvcc_info)| {
                         let mut resp = ScanMvccResponse::new();
-                        resp.set_key(key);
+                        resp.set_key(key.into());
                         resp.set_info(mvcc_info);
                         (resp, WriteFlags::default())
                     })
@@ -241,7 +244,7 @@ impl debugpb_grpc::Debug for Service {
                 return Err(Error::InvalidArgument("Failure Type INVALID".to_owned()));
             }
             let actions = req.get_actions();
-            if let Err(e) = fail::cfg(name, actions) {
+            if let Err(e) = fail::cfg(name.deref(), actions) {
                 return Err(box_err!("{:?}", e));
             }
             Ok(InjectFailPointResponse::new())
@@ -263,7 +266,7 @@ impl debugpb_grpc::Debug for Service {
             if name.is_empty() {
                 return Err(Error::InvalidArgument("Failure Type INVALID".to_owned()));
             }
-            fail::remove(name);
+            fail::remove(name.deref());
             Ok(RecoverFailPointResponse::new())
         });
 
@@ -281,8 +284,8 @@ impl debugpb_grpc::Debug for Service {
         let f = self.pool.spawn_fn(move || {
             let list = fail::list().into_iter().map(|(name, actions)| {
                 let mut entry = ListFailPointsResponse_Entry::new();
-                entry.set_name(name);
-                entry.set_actions(actions);
+                entry.set_name(name.into());
+                entry.set_actions(actions.into());
                 entry
             });
             let mut resp = ListFailPointsResponse::new();

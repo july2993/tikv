@@ -591,9 +591,9 @@ fn process_read(
                     let mut locks = vec![];
                     for (key, lock) in v {
                         let mut lock_info = LockInfo::new();
-                        lock_info.set_primary_lock(lock.primary);
+                        lock_info.set_primary_lock(lock.primary.into());
                         lock_info.set_lock_version(lock.ts);
-                        lock_info.set_key(key.raw()?);
+                        lock_info.set_key(key.raw()?.into());
                         locks.push(lock_info);
                     }
                     KV_COMMAND_KEYREAD_HISTOGRAM_VEC

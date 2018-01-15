@@ -325,7 +325,8 @@ impl RequestTask {
         let cop_req = match tp {
             REQ_TYPE_DAG => {
                 let mut is = CodedInputStream::from_bytes(req.get_data());
-                is.set_recursion_limit(recursion_limit);
+                // TODO
+                // is.set_recursion_limit(recursion_limit);
                 let mut dag = DAGRequest::new();
                 if let Err(e) = dag.merge_from(&mut is) {
                     Err(box_err!(e))
@@ -341,7 +342,8 @@ impl RequestTask {
             }
             REQ_TYPE_ANALYZE => {
                 let mut is = CodedInputStream::from_bytes(req.get_data());
-                is.set_recursion_limit(recursion_limit);
+                // TODO
+                // is.set_recursion_limit(recursion_limit);
                 let mut analyze = AnalyzeReq::new();
                 if let Err(e) = analyze.merge_from(&mut is) {
                     Err(box_err!(e))
@@ -601,19 +603,19 @@ fn err_resp(e: Error) -> Response {
                 .with_label_values(&[scan_tag])
                 .observe(elapsed.as_secs() as f64);
 
-            resp.set_other_error(OUTDATED_ERROR_MSG.to_owned());
+            resp.set_other_error(OUTDATED_ERROR_MSG.into());
         }
         Error::Full(allow) => {
             COPR_REQ_ERROR.with_label_values(&["full"]).inc();
             let mut errorpb = errorpb::Error::new();
-            errorpb.set_message(format!("running batches reach limit {}", allow));
+            errorpb.set_message(format!("running batches reach limit {}", allow).into());
             let mut server_is_busy_err = ServerIsBusy::new();
-            server_is_busy_err.set_reason(ENDPOINT_IS_BUSY.to_owned());
+            server_is_busy_err.set_reason(ENDPOINT_IS_BUSY.into());
             errorpb.set_server_is_busy(server_is_busy_err);
             resp.set_region_error(errorpb);
         }
         Error::Other(_) => {
-            resp.set_other_error(format!("{}", e));
+            resp.set_other_error(format!("{}", e).into());
             COPR_REQ_ERROR.with_label_values(&["other"]).inc();
         }
     }
@@ -702,7 +704,7 @@ impl TiDbEndPoint {
 pub fn to_pb_error(err: &Error) -> select::Error {
     let mut e = select::Error::new();
     e.set_code(DEFAULT_ERROR_CODE);
-    e.set_msg(format!("{}", err));
+    e.set_msg(format!("{}", err).into());
     e
 }
 
@@ -915,7 +917,7 @@ mod tests {
         dag.mut_executors().push(e);
         let mut req = Request::new();
         req.set_tp(REQ_TYPE_DAG);
-        req.set_data(dag.write_to_bytes().unwrap());
+        req.set_data(dag.write_to_bytes().unwrap().into());
         RequestTask::new(req.clone(), box move |_| unreachable!(), 100);
         RequestTask::new(
             req,

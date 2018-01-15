@@ -492,6 +492,7 @@ mod tests {
     use std::sync::atomic::{AtomicBool, Ordering};
     use kvproto::eraftpb::Entry;
     use protobuf::Message;
+    use bytes::Bytes;
     use super::*;
 
     #[test]
@@ -574,7 +575,7 @@ mod tests {
     #[test]
     fn test_limit_size() {
         let mut e = Entry::new();
-        e.set_data(b"0123456789".to_vec());
+        e.set_data(Bytes::from(&b"0123456789"[..]));
         let size = u64::from(e.compute_size());
 
         let tbls = vec![

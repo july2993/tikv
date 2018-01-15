@@ -34,6 +34,7 @@ use protobuf::{self, RepeatedField};
 use kvproto::eraftpb::{ConfChange, ConfChangeType, ConfState, Entry, EntryType, HardState,
                        Message, MessageType, Snapshot};
 use rand;
+use bytes::Bytes;
 
 use tikv::raft::*;
 use tikv::raft::storage::MemStorage;
@@ -269,7 +270,7 @@ pub fn new_entry(term: u64, index: u64, data: Option<&str>) -> Entry {
     e.set_index(index);
     e.set_term(term);
     if let Some(d) = data {
-        e.set_data(d.as_bytes().to_vec());
+        e.set_data(d.into());
     }
     e
 }
@@ -609,7 +610,7 @@ fn test_progress_paused() {
     m.set_to(1);
     m.set_msg_type(MessageType::MsgPropose);
     let mut e = Entry::new();
-    e.set_data(b"some_data".to_vec());
+    e.set_data(Bytes::from(&b"some_data"[..]));
     m.set_entries(RepeatedField::from_vec(vec![e]));
     raft.step(m.clone()).expect("");
     raft.step(m.clone()).expect("");
@@ -1663,7 +1664,7 @@ fn test_raft_frees_read_only_mem() {
     // acknowledge the authority of the leader.
     // more info: raft dissertation 6.4, step 3.
     let mut m = new_message(2, 1, MessageType::MsgHeartbeatResponse, 0);
-    m.set_context(vec_ctx.clone());
+    m.set_context(vec_ctx.clone().into());
     sm.step(m).expect("");
     assert_eq!(sm.read_only.read_index_queue.len(), 0);
     assert_eq!(sm.read_only.pending_read_index.len(), 0);
@@ -3058,7 +3059,7 @@ fn test_commit_after_remove_node() {
     let mut cc = ConfChange::new();
     cc.set_change_type(ConfChangeType::RemoveNode);
     cc.set_node_id(2);
-    e.set_data(protobuf::Message::write_to_bytes(&cc).unwrap());
+    e.set_data(protobuf::Message::write_to_bytes(&cc).unwrap().into());
     m.mut_entries().push(e);
     r.step(m).expect("");
     // Stabilize the log and make sure nothing is committed yet.

@@ -277,12 +277,14 @@ mod test {
                 region.set_start_key(
                     start_id
                         .map(|id| Key::from_raw(&gen_table_prefix(id)).encoded().to_vec())
-                        .unwrap_or_else(Vec::new),
+                        .unwrap_or_else(Vec::new)
+                        .into(),
                 );
                 region.set_end_key(
                     end_id
                         .map(|id| Key::from_raw(&gen_table_prefix(id)).encoded().to_vec())
-                        .unwrap_or_else(Vec::new),
+                        .unwrap_or_else(Vec::new)
+                        .into(),
                 );
                 assert_eq!(last_key_of_region(&engine, &region).unwrap(), want);
             }
@@ -333,8 +335,8 @@ mod test {
         type Case = (Option<Vec<u8>>, Option<Vec<u8>>, Option<i64>);
         let mut check_cases = |cases: Vec<Case>| {
             for (encoded_start_key, encoded_end_key, table_id) in cases {
-                region.set_start_key(encoded_start_key.unwrap_or_else(Vec::new));
-                region.set_end_key(encoded_end_key.unwrap_or_else(Vec::new));
+                region.set_start_key(encoded_start_key.unwrap_or_else(Vec::new).into());
+                region.set_end_key(encoded_end_key.unwrap_or_else(Vec::new).into());
                 runnable.run(SplitCheckTask::new(&region));
 
                 if let Some(id) = table_id {

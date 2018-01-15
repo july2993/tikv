@@ -36,10 +36,9 @@ use std::sync::Arc;
 use rustc_serialize::hex::{FromHex, ToHex};
 
 use clap::{App, Arg, ArgMatches, SubCommand};
-use protobuf::Message;
+use protobuf::{Chars, Message};
 use futures::{future, stream, Future, Stream};
 use grpcio::{ChannelBuilder, Environment};
-use protobuf::RepeatedField;
 
 use kvproto::raft_cmdpb::RaftCmdRequest;
 use kvproto::raft_serverpb::PeerState;
@@ -427,23 +426,24 @@ impl DebugExecutor for DebugClient {
     fn get_value_by_key(&self, cf: &str, key: Vec<u8>) -> Vec<u8> {
         let mut req = GetRequest::new();
         req.set_db(DBType::KV);
-        req.set_cf(cf.to_owned());
-        req.set_key(key);
+        req.set_cf(cf.into());
+        req.set_key(key.into());
         self.get(&req)
             .unwrap_or_else(|e| perror_and_exit("DebugClient::get", e))
             .take_value()
+            .to_vec()
     }
 
     fn get_region_size(&self, region: u64, cfs: Vec<&str>) -> Vec<(String, usize)> {
-        let cfs = cfs.into_iter().map(|s| s.to_owned()).collect();
+        let cfs = cfs.into_iter().map(|s| Chars::from(s)).collect();
         let mut req = RegionSizeRequest::new();
-        req.set_cfs(RepeatedField::from_vec(cfs));
+        req.set_cfs(cfs);
         req.set_region_id(region);
         self.region_size(&req)
             .unwrap_or_else(|e| perror_and_exit("DebugClient::region_size", e))
             .take_entries()
             .into_iter()
-            .map(|mut entry| (entry.take_cf(), entry.get_size() as usize))
+            .map(|mut entry| (entry.take_cf().to_string(), entry.get_size() as usize))
             .collect()
     }
 
@@ -482,23 +482,23 @@ impl DebugExecutor for DebugClient {
         limit: u64,
     ) -> Box<Stream<Item = (Vec<u8>, MvccInfo), Error = String>> {
         let mut req = ScanMvccRequest::new();
-        req.set_from_key(from);
-        req.set_to_key(to);
+        req.set_from_key(from.into());
+        req.set_to_key(to.into());
         req.set_limit(limit);
         Box::new(
             self.scan_mvcc(&req)
                 .unwrap()
                 .map_err(|e| e.to_string())
-                .map(|mut resp| (resp.take_key(), resp.take_info())),
+                .map(|mut resp| (resp.take_key().to_vec(), resp.take_info())),
         ) as Box<Stream<Item = (Vec<u8>, MvccInfo), Error = String>>
     }
 
     fn do_compact(&self, db: DBType, cf: &str, from: Vec<u8>, to: Vec<u8>) {
         let mut req = CompactRequest::new();
         req.set_db(db);
-        req.set_cf(cf.to_owned());
-        req.set_from_key(from);
-        req.set_to_key(to);
+        req.set_cf(cf.into());
+        req.set_from_key(from.into());
+        req.set_to_key(to.into());
         self.compact(&req)
             .unwrap_or_else(|e| perror_and_exit("DebugClient::compact", e));
         println!("success!");

@@ -22,7 +22,7 @@ pub const REQ_TYPE_ANALYZE: i64 = 104;
 
 fn new_analyze_req(data: Vec<u8>, range: KeyRange) -> Request {
     let mut req = Request::new();
-    req.set_data(data);
+    req.set_data(data.into());
     req.set_ranges(RepeatedField::from_vec(vec![range]));
     req.set_tp(REQ_TYPE_ANALYZE);
     req

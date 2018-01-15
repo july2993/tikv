@@ -83,12 +83,12 @@ impl AnalyzeContext {
         match ret {
             Ok(data) => {
                 let mut resp = Response::new();
-                resp.set_data(data);
+                resp.set_data(data.into());
                 Ok(resp)
             }
             Err(Error::Other(e)) => {
                 let mut resp = Response::new();
-                resp.set_other_error(format!("{}", e));
+                resp.set_other_error(format!("{}", e).into());
                 Ok(resp)
             }
             Err(e) => Err(e),

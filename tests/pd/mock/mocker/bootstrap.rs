@@ -22,7 +22,7 @@ impl PdMocker for AlreadyBootstrapped {
     fn bootstrap(&self, _: &BootstrapRequest) -> Option<Result<BootstrapResponse>> {
         let mut err = Error::new();
         err.set_field_type(ErrorType::ALREADY_BOOTSTRAPPED);
-        err.set_message("cluster is already bootstrapped".to_owned());
+        err.set_message("cluster is already bootstrapped".into());
 
         let mut header = ResponseHeader::new();
         header.set_error(err);
